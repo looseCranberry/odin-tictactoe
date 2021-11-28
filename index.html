@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<!--<link rel="stylesheet" href="style.css" />-->
+		<!--<script src='app.js'></script>-->
+		<title>HI! GO FUCK YOURSELF</title>
+		<style>
+			@font-face {
+				font-family: "Open Sans Condensed";
+				src: url(OpenSans_Condensed-Light.ttf);
+			}
+			.win {
+				background-color: green;
+			}
+			.block {
+				background-color: red;
+			}
+			.empty {
+				background-color: white;
+			}
+			.X {
+				background-color: red;
+			}
+			.O {
+				background-color: blue;
+			}
+			body {
+				margin: 0;
+				height: 100vh;
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				font-family: "Open Sans Condensed";
+			}
+			main {
+				margin: 0;
+				padding: 0;
+				display: flex;
+				align-items: center;
+				justify-content: space-around;
+			}
+			main > section:nth-child(1),
+			main > section:nth-child(2),
+			main > section:nth-child(3) {
+				background-color: black;
+				width: 192px;
+				height: 192px;
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				justify-content: space-around;
+			}
+			main > section:nth-child(1) > div,
+			main > section:nth-child(2) > div,
+			main > section:nth-child(3) > div {
+				width: 60px;
+				height: 60px;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+			}
+			main > section:nth-child(2) > div:hover {
+				background-color: deeppink;
+			}
+			body > section {
+				width: 220px;
+				height: 36px;
+				margin: 24px 0;
+				padding: 32px 24px;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				align-self: center;
+				border: 1px solid black;
+			}
+			body > section > div {
+				margin: 16px;
+			}
+			body > section > div > button {
+				margin: 0 8px;
+				width: 64px;
+				border: none;
+				border-bottom: 1px solid dimgray;
+			}
+			body > section > div > button:hover {
+				border-top: 1px solid dimgray;
+			}
+			body > section > div > button:active {
+				color: white;
+				background-color: dimgray;
+			}
+		</style>
+		<script>
+			const comp = {
+				index: 0,
+				moves: [],
+			};
+			const player = {
+				index: 0,
+				moves: [],
+			};
+
+			// prettier-ignore
+			const winners = [
+				[[1,2],[4,8],[3,6]],[[0,2],[4,7]],[[0,1],[5,8],[4,6]],
+				[[0,6],[4,5]],[[0,8],[1,7],[2,6],[3,5]],[[2,8],[3,4]],
+				[[0,3],[2,4],[7,8]],[[6,8],[1,4]],[[0,4],[2,5],[6,7]]
+			]; /* Winning Conditions */
+
+			const board = [null, null, null, null, null, null, null, null, null];
+
+			/* Default Weight */
+			const weight = [1.0, 0.25, 1.0, 0.25, 0.75, 0.25, 1.0, 0.25, 1.0];
+			/* Computer Move Weight */
+			const proweight = [
+				[0.0, 0.5, 0.5, 0.5, 0.5, 0.25, 0.5, 0.25, 1.0],
+				[0.5, 0.0, 0.5, 0.25, 0.5, 0.25, 0.25, 0.5, 0.25],
+				[0.5, 0.5, 0.0, 0.25, 0.5, 0.5, 1.0, 0.25, 0.5],
+				[0.5, 0.25, 0.25, 0.0, 0.5, 0.5, 0.5, 0.25, 0.25],
+				[0.25, 1.0, 0.25, 1.0, 0.0, 1.0, 0.25, 1.0, 0.25],
+				[0.25, 0.25, 0.5, 0.5, 0.5, 0.0, 0.25, 0.25, 0.5],
+				[0.5, 0.25, 1.0, 0.5, 0.5, 0.25, 0.0, 0.5, 0.5],
+				[0.25, 0.5, 0.25, 0.25, 0.5, 0.25, 0.5, 0.0, 0.5],
+				[1.0, 0.25, 0.5, 0.25, 0.5, 0.5, 0.5, 0.5, 0.0],
+			];
+			/* Player Move Weight */
+			const counterweight = [
+				[0.0, 0.25, 0.5, 0.25, 1.0, 0.25, 0.5, 0.25, 0.5],
+				[0.5, 0.0, 0.5, 0.25, 1.5, 0.25, 0.5, 0.25, 0.5],
+				[0.5, 0.25, 0.0, 0.25, 1.0, 0.25, 0.5, 0.25, 0.5],
+				[0.5, 0.25, 0.5, 0.0, 1.5, 0.25, 0.5, 0.25, 0.5],
+				[0.5, 0.25, 0.5, 0.25, 0.0, 0.25, 0.5, 0.25, 0.5],
+				[0.5, 0.25, 0.5, 0.25, 1.5, 0.0, 0.5, 0.25, 0.5],
+				[0.5, 0.25, 0.5, 0.25, 1.0, 0.25, 0.0, 0.25, 0.5],
+				[0.5, 0.25, 0.5, 0.25, 1.5, 0.25, 0.5, 0.0, 0.5],
+				[0.5, 0.25, 0.5, 0.25, 1.0, 0.25, 0.5, 0.25, 0.0],
+			];
+
+			const Xpath = {
+				moves: [],
+				walks: [],
+			};
+			const Opath = {
+				moves: [],
+				walks: [],
+			};
+
+			const lazyanal = function (index, mark) {
+				index = index[1];
+				let walks = Xpath.walks;
+				let val = { walkable: 0.0, forkable: 0.0, winnable: 0.0, free: 0.0 };
+
+				if (board[index] !== null) {
+					return val;
+				} else val.free = 0.05;
+
+				winners[index].forEach((w) => {
+					let [w0, w1] = [board[w[0]], board[w[1]]];
+					if (w0 === mark && w1 === mark) val.winnable += 25.0;
+					else if (w0 === null && w1 === null) {
+						val.walkable += 0.15;
+						walks.unshift(w[0], w[1]);
+					} else if (w0 === mark && w1 === null) val.winnable += 0.25;
+					else if (w0 === null && w1 === mark) val.winnable += 0.25;
+				});
+
+				if (walks.length > 1) {
+					let cells = [];
+					let root = null;
+					walks.forEach((w) => {
+						let [i0, i1, i2] = [w[0], w[1], w[2]];
+						if (root === null) root = i0;
+						if (i0 !== root) {
+							if (cells.indexOf(i1) >= 0) val.forkable += 0.5;
+							if (cells.indexOf(i2) >= 0) val.forkable += 0.5;
+						} else {
+							if (cells.indexOf(i1) < 0) cells.push(i1);
+							if (cells.indexOf(i2) < 0) cells.push(i2);
+						}
+					});
+				}
+
+				for (let i = 0; i < 9; i++) {
+					let e = document.querySelector("#s" + i);
+					e.innerText = "";
+				}
+
+				let v = val.walkable + val.forkable + val.winnable + val.free + weights[index];
+				let e = document.querySelector("#s" + index);
+				e.innerText = v;
+
+				return val;
+			};
+
+			const analyze = function () {
+				analysis = {
+					X: {
+						wins: [],
+						walks: [],
+						forks: [],
+					},
+					O: {
+						wins: [],
+						walks: [],
+						forks: [],
+					},
+				};
+				/*
+					Order of Operations
+					[ If 1st Game Move [ Take Any Corner ]]
+					[1] Can Win?
+					[2] Can Block Win?
+					[3] Can Fork?
+					[4] Can Block Fork?
+					[ If 2nd Game Move [ Take Center Square] || [Take Corner Square]]
+					[ If 3rd Game Move [ Take Opposite Corner ]]
+
+					Check Walking !!! before taking a path after the second move
+					Make sure that you can complete a fork with your third move!!!
+				*/
+
+				for (let i = 0; i < 9; i++) {
+					if (board[i] !== null) {
+						winners[i].forEach((w) => {
+							let [w0, w1] = [board[w[0]], board[w[1]]];
+							if (w0 === board[i] && w1 === board[i]) chickenDinner(board[i]);
+							else if (w0 === null && w1 === null)
+								analysis[board[i]].walks.push([i, w[0], w[1]]);
+							else if (w0 === board[i] && w1 === null) {
+								if (analysis[board[i]].wins.indexOf(w[1]) < 0)
+									analysis[board[i]].wins.push(w[1]);
+							} else if (w1 === board[i] && w0 === null) {
+								if (analysis[board[i]].wins.indexOf(w[0]) < 0)
+									analysis[board[i]].wins.push(w[0]);
+							}
+						});
+					}
+				}
+
+				let iter = "X";
+				for (let i = 0; i < 2; i++) {
+					let walks = analysis[iter].walks;
+					if (walks.length > 1) {
+						let cells = [];
+						let root = null;
+						walks.forEach((w) => {
+							let [i0, i1, i2] = [w[0], w[1], w[2]];
+							if (root === null) root = i0;
+							if (i0 !== root) {
+								if (cells.indexOf(i1) < 0) cells.push(i1);
+								else analysis[iter].forks.push(i1);
+								if (cells.indexOf(i2) < 0) cells.push(i2);
+								else analysis[iter].forks.push(i2);
+							} else {
+								if (cells.indexOf(i1) < 0) cells.push(i1);
+								if (cells.indexOf(i2) < 0) cells.push(i2);
+							}
+						});
+					}
+					iter = "O";
+				}
+
+				Xpath.walks = [];
+
+				for (let i = 0; i < 9; i++) {
+					let e = document.querySelector("#s" + i);
+					e.innerText = "";
+					e.setAttribute("class", "empty");
+				}
+				if (analysis.X.wins.length > 0) {
+					analysis.X.wins.forEach((w) => {
+						let e = document.querySelector("#s" + w);
+						e.setAttribute("class", "win");
+					});
+				}
+				if (analysis.O.wins.length > 0) {
+					analysis.O.wins.forEach((w) => {
+						let e = document.querySelector("#s" + w);
+						e.setAttribute("class", "block");
+					});
+				}
+				if (analysis.X.walks.length > 0) {
+					analysis.X.walks.forEach((w) => {
+						Xpath.walks.push([w[0], w[1], w[2]]);
+						w.forEach((index) => {
+							let e = document.querySelector("#s" + index);
+							if (e.innerText.indexOf("W") < 0) e.innerText += "W";
+						});
+					});
+				}
+				if (analysis.O.forks.length > 0) {
+					analysis.O.forks.forEach((f) => {
+						let e = document.querySelector("#s" + f);
+						e.setAttribute("class", "block");
+					});
+				}
+				if (analysis.X.forks.length > 0) {
+					analysis.X.forks.forEach((f) => {
+						let e = document.querySelector("#s" + f);
+						e.innerText += "F";
+					});
+				}
+
+				console.log(analysis.X);
+				console.log(analysis.O);
+				console.log(Xpath.walks);
+			};
+
+			const chickenDinner = function (mark) {
+				alert(mark + " Wins!");
+			};
+
+			let current = "X";
+			const take = function (i) {
+				let e = null;
+				if (typeof i === "number") [i, e] = [i, document.querySelector("#i" + i)];
+				else [i, e] = [i.id[1], i];
+
+				if (board[i] === null) {
+					board[i] = current;
+					if (current === "X") {
+						Xpath.moves.push(i);
+						for (let x = 0; x < 9; x++) {
+							weight[x] += proweight[i][x];
+						}
+						e.setAttribute("class", "X");
+						current = "O";
+					} else {
+						Opath.moves.push(i);
+						for (let x = 0; x < 9; x++) {
+							weight[x] += counterweight[i][x];
+						}
+						e.setAttribute("class", "O");
+						current = "X";
+					}
+
+					for (let i = 0; i < 9; i++) {
+						let e = document.querySelector("#w" + i);
+						e.innerText = weight[i];
+					}
+
+					analyze();
+				}
+			};
+		</script>
+	</head>
+	<body>
+		<main>
+			<section>
+				<div id="s0" class="empty"></div>
+				<div id="s1" class="empty"></div>
+				<div id="s2" class="empty"></div>
+				<div id="s3" class="empty"></div>
+				<div id="s4" class="empty"></div>
+				<div id="s5" class="empty"></div>
+				<div id="s6" class="empty"></div>
+				<div id="s7" class="empty"></div>
+				<div id="s8" class="empty"></div>
+			</section>
+			<section>
+				<div id="i0" class="empty" onclick="take(this)"></div>
+				<div id="i1" class="empty" onclick="take(this)"></div>
+				<div id="i2" class="empty" onclick="take(this)"></div>
+				<div id="i3" class="empty" onclick="take(this)"></div>
+				<div id="i4" class="empty" onclick="take(this)"></div>
+				<div id="i5" class="empty" onclick="take(this)"></div>
+				<div id="i6" class="empty" onclick="take(this)"></div>
+				<div id="i7" class="empty" onclick="take(this)"></div>
+				<div id="i8" class="empty" onclick="take(this)"></div>
+			</section>
+			<section>
+				<div id="w0" class="empty"></div>
+				<div id="w1" class="empty"></div>
+				<div id="w2" class="empty"></div>
+				<div id="w3" class="empty"></div>
+				<div id="w4" class="empty"></div>
+				<div id="w5" class="empty"></div>
+				<div id="w6" class="empty"></div>
+				<div id="w7" class="empty"></div>
+				<div id="w8" class="empty"></div>
+				<script>
+					for (let i = 0; i < 9; i++) {
+						let e = document.querySelector("#w" + i);
+						e.innerText = weight[i];
+					}
+				</script>
+			</section>
+		</main>
+		<section>
+			<header>Make your selection</header>
+			<div>
+				<button onclick="">X</button>
+				<button onclick="">O</button>
+			</div>
+		</section>
+	</body>
+</html>
